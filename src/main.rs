@@ -1,4 +1,5 @@
 mod config;
+mod error;
 
 use axum::{Router, routing::get};
 use tower_http::trace::TraceLayer;
@@ -27,6 +28,9 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello_world))
         .route("/user/{name}", get(greet_user))
+        .route("/error/notfound", get(test_not_found))
+        .route("/error/badrequest", get(test_bad_request))
+        .route("/error/internal", get(test_internal_error))
         .layer(TraceLayer::new_for_http());
 
     let addr = config.addr();
@@ -50,4 +54,19 @@ async fn hello_world() -> &'static str {
 async fn greet_user(axum::extract::Path(name): axum::extract::Path<String>) -> String {
     tracing::info!("Greeting user: {}", name);
     format!("Hello, {}!", name)
+}
+
+// エラーハンドリングのテスト用エンドポイント
+async fn test_not_found() -> error::Result<String> {
+    Err(error::AppError::NotFound("User not found".to_string()))
+}
+
+async fn test_bad_request() -> error::Result<String> {
+    Err(error::AppError::BadRequest(
+        "Invalid parameters".to_string(),
+    ))
+}
+
+async fn test_internal_error() -> error::Result<String> {
+    Err(error::AppError::InternalError)
 }
