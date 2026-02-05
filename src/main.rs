@@ -1,7 +1,12 @@
 mod config;
 mod error;
+mod handlers;
+mod models;
 
-use axum::{Router, routing::get};
+use axum::{
+    Router,
+    routing::{delete, get, post},
+};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -31,6 +36,10 @@ async fn main() {
         .route("/error/notfound", get(test_not_found))
         .route("/error/badrequest", get(test_bad_request))
         .route("/error/internal", get(test_internal_error))
+        .route("/api/users", get(handlers::user::list_users))
+        .route("/api/users", post(handlers::user::create_user))
+        .route("/api/users/{id}", get(handlers::user::get_user))
+        .route("/api/users/{id}", delete(handlers::user::delete_user))
         .layer(TraceLayer::new_for_http());
 
     let addr = config.addr();
