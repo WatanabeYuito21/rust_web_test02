@@ -1,9 +1,14 @@
+mod config;
+
 use axum::{Router, routing::get};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
+    // .envファイルの読み込み
+    dotenvy::dotenv().ok();
+
     // ロギングの初期化
     tracing_subscriber::registry()
         .with(
@@ -13,16 +18,25 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // 設定の読み込み
+    let config = config::Config::from_env().expect("Failed to load configuration");
+
+    tracing::info!("Configuration loaded: {:?}", config);
+
     // ルーターの作成
     let app = Router::new()
         .route("/", get(hello_world))
         .route("/user/{name}", get(greet_user))
         .layer(TraceLayer::new_for_http());
 
-    // サーバーの起動
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let addr = config.addr();
 
-    tracing::info!("Server runnning on http://0.0.0.0:3000");
+    // サーバーの起動
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind");
+
+    tracing::info!("Server runnning on http://{}", addr);
 
     axum::serve(listener, app).await.unwrap();
 }
